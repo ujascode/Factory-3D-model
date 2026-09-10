@@ -1,39 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#07090b">
+  <meta name="description" content="UJASCODE — Interactive 3D Industrial Factory Experience.">
+  <title>UJASCODE — Factory 3D Experience</title>
+  <link rel="stylesheet" href="./styles.css">
 
-    <title>UJASCODE 3D Industrial Factory Experience</title>
-
-    <link rel="stylesheet" href="./styles.css">
-
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
-        }
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
     }
-    </script>
+  }
+  </script>
 </head>
-
 <body>
+<main class="experience">
+  <canvas id="scene"></canvas>
+  <div class="vignette"></div>
+  <div class="grid-glow"></div>
 
-    <div id="loading">
-        LOADING FACTORY EXPERIENCE
+  <header class="topbar">
+    <a class="brand" href="#">UJASCODE</a>
+    <div class="top-meta">
+      <span>3D INDUSTRIAL EXPERIENCE</span>
+      <span class="live"><i></i> LIVE VIEW</span>
     </div>
+    <button id="menuButton" class="menu-button" aria-label="Open information" aria-expanded="false">
+      <span></span><span></span>
+    </button>
+  </header>
 
-    <div id="ui">
-        <strong>UJASCODE</strong>
-        <div>3D INDUSTRIAL FACTORY EXPERIENCE</div>
-        <div>MANUFACTURING · AUTOMATION · PRECISION ENGINEERING</div>
+  <section class="hero">
+    <p class="eyebrow">INDUSTRIAL MANUFACTURING / DIGITAL TWIN</p>
+    <h1>Explore the<br><strong>Factory.</strong></h1>
+    <p class="description">
+      An interactive 3D factory experience designed for manufacturing,
+      engineering, automation and industrial businesses.
+    </p>
+    <div class="actions">
+      <button id="resetBtn" class="button button-primary">RESET VIEW <b>↗</b></button>
+      <button id="autoBtn" class="button button-secondary" aria-pressed="true">
+        AUTO ROTATE <b id="autoState">ON</b>
+      </button>
     </div>
+  </section>
 
-    <div id="hints">
-        DRAG TO EXPLORE<br>SCROLL TO ZOOM
+  <aside class="info-panel" id="infoPanel" aria-hidden="true">
+    <div class="panel-head">
+      <span>FACTORY / 01</span>
+      <button id="closePanel" aria-label="Close information">×</button>
     </div>
+    <div class="panel-content">
+      <p>CAPABILITIES</p>
+      <h2>Manufacturing.<br>Automation.<br>Precision.</h2>
+      <div class="capabilities">
+        <span>PRODUCTION LINES</span><span>MACHINING</span>
+        <span>ASSEMBLY</span><span>QUALITY CONTROL</span>
+        <span>LOGISTICS</span><span>ENGINEERING</span>
+      </div>
+    </div>
+  </aside>
 
-    <script type="module" src="./script.js"></script>
+  <button id="infoButton" class="info-button"><span>+</span> INFO</button>
 
+  <div class="stats">
+    <div><span>EXPERIENCE</span><strong>FACTORY 01</strong></div>
+    <div><span>MODEL</span><strong>ORIGINAL 3D ASSET</strong></div>
+    <div><span>CONTROL</span><strong>ROTATE · PAN · ZOOM</strong></div>
+  </div>
+
+  <div class="hint">
+    <span class="mouse-icon"></span>
+    <span>DRAG TO ROTATE</span>
+    <span>RIGHT DRAG TO PAN</span>
+    <span>SCROLL TO ZOOM</span>
+  </div>
+
+  <div id="loader" class="loader">
+    <div class="loader-title"><span>LOADING FACTORY EXPERIENCE</span><strong id="loaderPercent">0%</strong></div>
+    <div class="loader-line"><span id="loaderBar"></span></div>
+    <p>Preparing the 3D environment</p>
+  </div>
+
+  <div id="error" class="error" hidden>
+    <strong>3D MODEL LOAD ERROR</strong>
+    <p id="errorText">The factory asset could not be loaded.</p>
+    <small>Use VS Code Live Server or another HTTP server.</small>
+  </div>
+
+  <footer class="footer">
+    <span>UJASCODE / INDUSTRIAL DIGITAL EXPERIENCES</span>
+    <span>3D FACTORY SAMPLE</span>
+  </footer>
+</main>
+<script type="module" src="./script.js"></script>
 </body>
 </html>
