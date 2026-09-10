@@ -21,7 +21,7 @@ const camera = new THREE.PerspectiveCamera(
     0.1,
     1000
 );
-camera.position.set(0, 5, 10);
+// Initial position will be set after model loads will be set dynamically
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -34,13 +34,13 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// Lighting - neutral white lights (studio setup)
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x555555, 1.5);
+// Lighting - neutral white lights (studio setup) - adjusted to be brighter
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2.5);
 hemiLight.position.set(0, 20, 0);
 scene.add(hemiLight);
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
-keyLight.position.set(5, 8, 10);
+const keyLight = new THREE.DirectionalLight(0xffffff, 3.5);
+keyLight.position.set(100, 150, 100);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.width = 2048;
 keyLight.shadow.mapSize.height = 2048;
@@ -52,9 +52,14 @@ keyLight.shadow.camera.top = 10;
 keyLight.shadow.camera.bottom = -10;
 scene.add(keyLight);
 
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
-fillLight.position.set(-5, 4, 6);
+const fillLight = new THREE.DirectionalLight(0xffffff, 1.8);
+fillLight.position.set(-100, 80, -50);
 scene.add(fillLight);
+
+// Subtle rim/back light
+const rimLight = new THREE.DirectionalLight(0xffffff, 1.2);
+rimLight.position.set(0, -50, -100);
+scene.add(rimLight);
 
 // Floor
 const floorGeometry = new THREE.PlaneGeometry(100, 100);
@@ -72,8 +77,8 @@ scene.add(floor);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.enablePan = true;
-controls.minDistance = 2;
-controls.maxDistance = 100;
+controls.minDistance = 2; // will be updated after model loads
+controls.maxDistance = 100; // will be updated after model loads
 controls.target.set(0, 0, 0);
 controls.update();
 
@@ -134,13 +139,41 @@ const mtlLoader = new MTLLoader();
 // Set path to the directory containing the MTL file
 mtlLoader.setPath('./models/source/20251228_004_OUTPUT_LOD03/');
 // Set resource path for textures (relative to MTL file location)
-mtlLoader.setResourcePath('./'); // Textures are in same directory as MTL
+mtlLoader.setResourcePath('./models/source/20251228_004_OUTPUT_LOD03/'); // Textures are in same directory as MTL
 
 // Load MTL
 mtlLoader.load(
     '20251228_004_RC_LOD0.mtl',
     (materials) => {
         console.log('MTL LOADED', materials);
+
+        // Inspect the materials
+        if (materials.materials) {
+            for (const name in materials.materials) {
+                const material = materials.materials[name];
+                console.log(
+                    'MATERIAL:',
+                    name,
+                    'color:',
+                    material.color.getHex(),
+                    'map:',
+                    material.map ? 'YES' : 'NO',
+                    'transparent:',
+                    material.transparent,
+                    'opacity:',
+                    material.opacity
+                );
+                if (material.map) {
+                    // Only apply sRGB color space to color/diffuse textures
+                    material.map.colorSpace = THREE.SRGBColorSpace;
+                    material.map.needsUpdate = true;
+                    console.log('  SET SRGB COLORSPACE ON MAP');
+                }
+            }
+        } else {
+            console.log('WARNING: materials.materials is undefined or empty');
+        }
+
         materials.preload();
 
         const objLoader = new OBJLoader();
@@ -155,15 +188,35 @@ mtlLoader.load(
                 console.log('Object:', object);
 
                 // Log model information
+                let meshCount = 0;
+                let texturedMaterialCount = 0;
+                let meshWithUVCount = 0;
                 object.traverse((child) => {
                     if (child.isMesh) {
-                        console.log('MESH:', child.name || '(no name)');
-                        console.log('MATERIAL:', child.material);
-                        if (child.material.map) {
-                            console.log('  TEXTURE:', child.material.map.image?.currentSrc || child.material.map.image?.src);
+                        meshCount++;
+                        console.log(
+                            'MESH:',
+                            child.name || '(no name)',
+                            'MATERIAL:',
+                            child.material ? child.material.name || '(no name)' : 'no material',
+                            'TYPE:',
+                            child.material ? child.material.type : 'none',
+                            'HAS MAP:',
+                            !!child.material.map,
+                            'HAS UV:',
+                            !!child.geometry?.attributes?.uv
+                        );
+                        if (child.material && child.material.map) {
+                            texturedMaterialCount++;
+                        }
+                        if (child.geometry && child.geometry.attributes?.uv) {
+                            meshWithUVCount++;
                         }
                     }
                 });
+                console.log('TOTAL MESHES:', meshCount);
+                console.log('TOTAL TEXTURED MATERIALS:', texturedMaterialCount);
+                console.log('TOTAL MESHES WITH UV:', meshWithUVCount);
 
                 scene.add(object);
 
@@ -184,8 +237,9 @@ mtlLoader.load(
                 console.log('center:', center.x, center.y, center.z);
                 console.log('size:', size.x, size.y, size.z);
 
-                const maxDimension = Math.max(size.x, size.y, size.z);
-                console.log('maxDimension:', maxDimension);
+                const sphere = box.getBoundingSphere(new THREE.Sphere());
+                const radius = sphere.radius;
+                console.log('bounding sphere radius:', radius);
 
                 // Center model on X and Z only (preserve original Y position)
                 object.position.x -= center.x;
@@ -198,37 +252,39 @@ mtlLoader.load(
                 floor.position.y = bottom - 0.02;
 
                 // Calculate proper camera distance to fit the model in view
-                const fov = camera.fov * (Math.PI / 180); // convert to radians
-                const distance = Math.max(size.x, size.z) / (2 * Math.tan(fov / 2));
-                // Add some padding to ensure the model fits comfortably
-                const cameraDistance = distance * 1.2;
+                const fovRadians = THREE.MathUtils.degToRad(camera.fov);
+                const distance = radius / Math.sin(fovRadians / 2);
+                // Add a small margin to ensure the model fits comfortably (about 15% extra)
+                const fitDistance = distance * 1.15;
+
+                console.log('calculated fit distance:', fitDistance);
 
                 // Set up camera for 3/4 elevated hero view
-                // Position camera diagonally in front and above the model
-                const heroOffsetX = cameraDistance * 0.6; // 60% to the right
-                const heroOffsetZ = cameraDistance * 0.6; // 60% forward
-                const heroOffsetY = maxDimension * 0.35; // 35% up from center
+                // We'll try a few directions and choose the one that shows the factory best.
+                // Since we don't know the factory's orientation, we'll use a default diagonal
+                // and then adjust based on the actual dimensions if needed.
+                const direction = new THREE.Vector3(1, 0.55, 1).normalize();
 
-                camera.position.set(
-                    center.x + heroOffsetX,    // after centering X/Z, center.x is 0
-                    center.y + heroOffsetY,    // preserve original Y center
-                    center.z + heroOffsetZ     // after centering X/Z, center.z is 0
+                camera.position.copy(
+                    center.clone().add(
+                        direction.multiplyScalar(fitDistance)
+                    )
                 );
 
                 // Look at the center of the model
                 camera.lookAt(center.x, center.y, center.z);
 
                 // Set proper near and far clipping planes
-                camera.near = Math.max(0.01, maxDimension / 1000);
-                camera.far = Math.max(1000, maxDimension * 20);
+                camera.near = Math.max(0.01, radius / 1000); // at least 0.01
+                camera.far = Math.max(1000, radius * 20);
                 camera.updateProjectionMatrix();
 
                 // Update OrbitControls target to the model center
                 controls.target.set(center.x, center.y, center.z);
 
                 // Set reasonable min/max distances for controls based on model size
-                controls.minDistance = maxDimension * 0.5;
-                controls.maxDistance = maxDimension * 5.0;
+                controls.minDistance = radius * 0.5;
+                controls.maxDistance = radius * 5.0;
 
                 // Update the controls
                 controls.update();
